@@ -1,4 +1,30 @@
 ui <- fluidPage(
+  useShinyjs(),
+  # 🔄 Pantalla de carga
+  tags$head(
+    tags$style(HTML("
+      #loader_div {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255,255,255,0.8);
+        z-index: 9999;
+        display: none;
+        text-align: center;
+        padding-top: 200px;
+        font-size: 24px;
+        color: #3f0373;
+        font-weight: bold;
+      }
+    "))
+  ),
+  div(
+    id = "loader_div",
+    "Procesando archivo...",
+    tags$br(),
+    tags$img(src = "https://i.imgur.com/llF5iyg.gif", height = "80px") # Spinner de carga
+  ),
   navbarPage(
     "Análisis de Oportunidades en LinkedIn",
     header = tags$head(
@@ -7,7 +33,7 @@ ui <- fluidPage(
           font-family: 'Segoe UI', sans-serif;
           background-color: #f4f4f8;
         }
-        
+
         /* Navbar */
         .navbar {
           background: linear-gradient(90deg, #7b2cbf, #3f37c9);
@@ -88,87 +114,120 @@ ui <- fluidPage(
         }
       "))
     ),
-    
     tabPanel(
       "Dashboard",
       sidebarLayout(
         sidebarPanel(
+          selectInput(
+            inputId = "agrupacion",
+            label = "Agrupar por:",
+            choices = c(
+              "Título" = "title",
+              "Cluster" = "cluster_nombre",
+              "Empresa" = "companyName",
+              "Categoría" = "categoria",
+              "Tecnologías" = "tech_tags",
+              "Ciudad" = "ciudad_cluster",
+              "País" = "pais_cluster"
+            ),
+            multiple = TRUE,
+            selected = c("title") # Selección por defecto
+          ),
           selectizeInput("companyName", "Selecciona la Compañía:", choices = NULL),
           selectInput("sector", "Selecciona el Sector:", choices = NULL),
           selectInput("categoria", "Selecciona la Categoría:", choices = NULL),
-          selectInput("tecnologia", "Selecciona una Tecnología:", choices = NULL)
+          selectInput("tecnologia", "Selecciona una Tecnología:", choices = NULL),
+          selectInput("pais_cluster", "Selecciona el País:", choices = NULL),
+          selectInput("ciudad_cluster", "Selecciona la Ciudad:", choices = NULL)
         ),
-        
         mainPanel(
           fluidRow(
-            column(4, 
-              div(class = "card", 
-                  div(class = "card-title", "Total Ofertas"), 
-                  div(class = "card-body", textOutput("total_ofertas"))
+            column(
+              4,
+              div(
+                class = "card",
+                div(class = "card-title", "Total Ofertas"),
+                div(class = "card-body", textOutput("total_ofertas"))
               )
             ),
-            column(4, 
-              div(class = "card", 
-                  div(class = "card-title", "Sectores Representados"), 
-                  div(class = "card-body", textOutput("sectores_representados"))
+            column(
+              4,
+              div(
+                class = "card",
+                div(class = "card-title", "Sectores Representados"),
+                div(class = "card-body", textOutput("sectores_representados"))
               )
             ),
-            column(4, 
-              div(class = "card", 
-                  div(class = "card-title", "Promedio Tecnologías"), 
-                  div(class = "card-body", textOutput("promedio_tecnologias"))
+            column(
+              4,
+              div(
+                class = "card",
+                div(class = "card-title", "Promedio Tecnologías"),
+                div(class = "card-body", textOutput("promedio_tecnologias"))
               )
             )
           ),
           fluidRow(
-            column(4, 
-              div(class = "card", 
-                  div(class = "card-title", "Tecnologías Únicas"), 
-                  div(class = "card-body", textOutput("tecnologias_unicas"))
+            column(
+              4,
+              div(
+                class = "card",
+                div(class = "card-title", "Tecnologías Únicas"),
+                div(class = "card-body", textOutput("tecnologias_unicas"))
               )
             ),
-            column(4, 
-              div(class = "card", 
-                  div(class = "card-title", "Top 3 Tecnologías"), 
-                  div(class = "card-body", textOutput("top_3_tecnologias"))
+            column(
+              4,
+              div(
+                class = "card",
+                div(class = "card-title", "Top 3 Tecnologías"),
+                div(class = "card-body", textOutput("top_3_tecnologias"))
               )
             ),
-            column(4, 
-              div(class = "card", 
-                  div(class = "card-title", "Top 3 Categorías"), 
-                  div(class = "card-body", textOutput("top_3_categorias"))
+            column(
+              4,
+              div(
+                class = "card",
+                div(class = "card-title", "Top 3 Categorías"),
+                div(class = "card-body", textOutput("top_3_categorias"))
               )
             )
           ),
           fluidRow(
-            column(6, 
-              div(class = "card", 
-                  div(class = "card-title", "Empresa con más Publicaciones"), 
-                  div(class = "card-body", textOutput("empresa_destacada"))
+            column(
+              6,
+              div(
+                class = "card",
+                div(class = "card-title", "Empresa con más Publicaciones"),
+                div(class = "card-body", textOutput("empresa_destacada"))
               )
             ),
-            column(6, 
-              div(class = "card", 
-                  div(class = "card-title", "Sector con más Oportunidades"), 
-                  div(class = "card-body", textOutput("sector_destacado"))
+            column(
+              6,
+              div(
+                class = "card",
+                div(class = "card-title", "Sector con más Oportunidades"),
+                div(class = "card-body", textOutput("sector_destacado"))
               )
             )
           ),
           tabsetPanel(
-            tabPanel("Tabla", 
-                     dataTableOutput("tabla"), 
-                     downloadButton("descargar_excel", "Descargar Excel")),
+            tabPanel(
+              "Tabla",
+              withSpinner(dataTableOutput("tabla")),
+              downloadButton("descargar_excel", "Descargar Excel")
+            ),
             tabPanel(
               "Gráfico",
               selectInput("tipo_grafico", "Mostrar gráfico por:",
-                          choices = c("Categoría" = "categoria", "Tecnología" = "tecnologia")),
+                choices = c("Categoría" = "categoria", "Tecnología" = "tecnologia")
+              ),
               plotOutput("grafico")
             )
           )
         )
       )
     ),
-    
     navbarMenu(
       "🛠 CRUD",
       tabPanel(
@@ -192,6 +251,12 @@ ui <- fluidPage(
         dataTableOutput("sectores"),
         actionButton("guardar_sectores", "💾 Guardar")
       )
+    ),
+    tabPanel(
+      '📁 Importar',
+      fileInput("archivo_excel", "Subir archivo Excel con oportunidades", 
+          accept = c(".xlsx", ".xls")),
+      actionButton("cargar_archivo", "Cargar archivo")
     )
   )
 )
