@@ -1,8 +1,5 @@
-source("./modules/debug.R")
-
 # Función para clusterizar nombres similares
 agrupar_fuzzy <- function(lista, max_dist = 0.2, label = "valor") {
-  debug_msg("Comenzando agrupamiento fuzzy", "clustering.R")
   lista <- unique(lista)
   dist_matrix <- stringdist::stringdistmatrix(lista, lista, method = "jw")
   hc <- hclust(as.dist(dist_matrix), method = "average")
@@ -20,13 +17,11 @@ agrupar_fuzzy <- function(lista, max_dist = 0.2, label = "valor") {
     summarise(grupo = first(grupo), miembros = paste(original, collapse = ", ")) %>%
     ungroup()
 
-  debug_msg("🟢Finalizo el proceso de agrupación fuzzy con éxito!", "clustering.R")
 
   return(mapping)
 }
 
 dbscan_titulos <- function(df, eps = 1.2, minPts = 5) {
-  debug_msg("Iniciando proceso de dbscan de title", "clustering.R")
   # Verificar que df es válido
   if (!inherits(df, "data.frame") && !inherits(df, "tibble")) {
     stop("El objeto 'df' no es un data.frame ni un tibble.")
@@ -71,6 +66,5 @@ dbscan_titulos <- function(df, eps = 1.2, minPts = 5) {
   # Paso 4: Unir al dataframe original
   df <- df %>%
     left_join(cluster_names, by = "cluster_titulo")
-  debug_msg("🟢Finalizo el proceso de dbscan con title con éxito!", "clustering.R")
   return(df)
 }

@@ -8,13 +8,24 @@ source("./modules/preprocesamiento.R")
 
 
 server <- function(input, output, session) {
-  
-  df <- readxl::read_excel("./content/combined_linkedin_jobs_no_duplicates.xlsx")
+  if (file.exists(RUTA_RDS)) {
+    df <- readRDS(RUTA_RDS)
+  } else {
+    df <- readxl::read_excel(RUTA_EXCEL)
+    df <- procesar_df(df)
+    saveRDS(df, RUTA_RDS)
+  }
 
-  df <- procesar_df(df)
   datos_reactivos <- reactiveVal(df)
 
   importar_excel(input, output, session, datos_reactivos)
+
+  observeEvent(input$re_procesar, {
+    df <- readxl::read_excel(RUTA_EXCEL)
+    df <- procesar_df(df)
+    saveRDS(df, RUTA_RDS)
+    datos_reactivos(df)
+  })
 
   editar_categorias <- function_editar_categorias(input, output, session)
   editar_sectores <- function_editar_sectores(input, output, session)
@@ -103,122 +114,125 @@ server <- function(input, output, session) {
     datos
   })
 
-  # Indicadores
-  output$total_ofertas <- renderText({
-    datos <- datos_filtrados() 
-    total_ofertas <- nrow(datos)
-    paste(total_ofertas)
-  })
 
-  output$sectores_representados <- renderText({
-    datos <- datos_filtrados() 
-    sectores <- length(unique(datos$sector_general))
-    paste(sectores)
-  })
+  if (INDICADORES) {
+    # Indicadores
+    output$total_ofertas <- renderText({
+      datos <- datos_filtrados()
+      total_ofertas <- nrow(datos)
+      paste(total_ofertas)
+    })
 
-  output$promedio_tecnologias <- renderText({
-    datos <- datos_filtrados() 
-    tech_counts <- datos %>%
-      filter(!is.na(tech_tags), tech_tags != "") %>%
-      mutate(n_techs = sapply(strsplit(tech_tags, ",\\s*"), function(x) {
-        if (length(x) == 1 && x[1] == "") {
-          return(0)
-        } # caso especial: una cadena vacía
-        length(x)
-      }))
+    output$sectores_representados <- renderText({
+      datos <- datos_filtrados()
+      sectores <- length(unique(datos$sector_general))
+      paste(sectores)
+    })
 
-    if (nrow(tech_counts) == 0 || all(is.na(tech_counts$n_techs))) {
-      return("No hay datos suficientes para calcular el promedio de tecnologías.")
-    }
+    output$promedio_tecnologias <- renderText({
+      datos <- datos_filtrados()
+      tech_counts <- datos %>%
+        filter(!is.na(tech_tags), tech_tags != "") %>%
+        mutate(n_techs = sapply(strsplit(tech_tags, ",\\s*"), function(x) {
+          if (length(x) == 1 && x[1] == "") {
+            return(0)
+          } # caso especial: una cadena vacía
+          length(x)
+        }))
 
-    avg_techs <- mean(as.numeric(tech_counts$n_techs), na.rm = TRUE)
-    paste("En promedio, cada oferta requiere", round(avg_techs, 2), "tecnologías.")
-  })
+      if (nrow(tech_counts) == 0 || all(is.na(tech_counts$n_techs))) {
+        return("No hay datos suficientes para calcular el promedio de tecnologías.")
+      }
 
-
-  output$tecnologias_unicas <- renderText({
-    datos <- datos_filtrados() 
-    techs_unicas <- datos %>%
-      filter(!is.na(tech_tags), tech_tags != "") %>%
-      separate_rows(tech_tags, sep = ",\\s*") %>%
-      filter(tech_tags != "") %>%
-      distinct(tech_tags) %>%
-      nrow()
-
-    paste0(
-      "En total se identificaron ", techs_unicas,
-      " tecnologías únicas en las ofertas. Esto refleja la diversidad de herramientas requeridas en el mercado."
-    )
-  })
+      avg_techs <- mean(as.numeric(tech_counts$n_techs), na.rm = TRUE)
+      paste("En promedio, cada oferta requiere", round(avg_techs, 2), "tecnologías.")
+    })
 
 
-  output$top_3_tecnologias <- renderText({
-    datos <- datos_filtrados() 
-    top_3_tech <- datos %>%
-      filter(!is.na(tech_tags), tech_tags != "") %>%
-      separate_rows(tech_tags, sep = ",\\s*") %>%
-      filter(tech_tags != "") %>%
-      count(tech_tags, name = "Cantidad") %>%
-      arrange(desc(Cantidad)) %>%
-      head(3) %>%
-      pull(tech_tags) %>%
-      paste(collapse = ", ")
-    paste(top_3_tech)
-  })
-
-  output$top_3_categorias <- renderText({
-    datos <- datos_filtrados() 
-    top_3_categorias <- datos %>%
-      count(categoria, name = "Cantidad") %>%
-      arrange(desc(Cantidad)) %>%
-      head(3) %>%
-      pull(categoria) %>%
-      paste(collapse = ", ")
-    paste(top_3_categorias)
-  })
-
-  output$empresa_destacada <- renderText({
-    datos <- datos_filtrados() 
-    empresa_top <- datos %>%
-      count(companyName, name = "Cantidad") %>%
-      arrange(desc(Cantidad)) %>%
-      slice(1)
-
-    if (nrow(empresa_top) > 0) {
-      empresa_nombre <- empresa_top$companyName[[1]]
-      empresa_cantidad <- empresa_top$Cantidad[[1]]
+    output$tecnologias_unicas <- renderText({
+      datos <- datos_filtrados()
+      techs_unicas <- datos %>%
+        filter(!is.na(tech_tags), tech_tags != "") %>%
+        separate_rows(tech_tags, sep = ",\\s*") %>%
+        filter(tech_tags != "") %>%
+        distinct(tech_tags) %>%
+        nrow()
 
       paste0(
-        "La empresa que publicó más ofertas es ", empresa_nombre,
-        ", con un total de ", empresa_cantidad,
-        " oportunidades disponibles."
+        "En total se identificaron ", techs_unicas,
+        " tecnologías únicas en las ofertas. Esto refleja la diversidad de herramientas requeridas en el mercado."
       )
-    } else {
-      "No se encontraron datos para determinar la empresa destacada."
-    }
-  })
+    })
 
 
-  output$sector_destacado <- renderText({
-    datos <- datos_filtrados() 
-    sector_top <- datos %>%
-      count(sector, name = "Cantidad") %>%
-      arrange(desc(Cantidad)) %>%
-      slice(1)
+    output$top_3_tecnologias <- renderText({
+      datos <- datos_filtrados()
+      top_3_tech <- datos %>%
+        filter(!is.na(tech_tags), tech_tags != "") %>%
+        separate_rows(tech_tags, sep = ",\\s*") %>%
+        filter(tech_tags != "") %>%
+        count(tech_tags, name = "Cantidad") %>%
+        arrange(desc(Cantidad)) %>%
+        head(3) %>%
+        pull(tech_tags) %>%
+        paste(collapse = ", ")
+      paste(top_3_tech)
+    })
 
-    if (nrow(sector_top) > 0) {
-      paste0(
-        "El sector con más oportunidades es ", sector_top$sector,
-        ", que concentra ", sector_top$Cantidad, " ofertas en total."
-      )
-    } else {
-      "No se encontraron datos para determinar el sector destacado."
-    }
-  })
+    output$top_3_categorias <- renderText({
+      datos <- datos_filtrados()
+      top_3_categorias <- datos %>%
+        count(categoria, name = "Cantidad") %>%
+        arrange(desc(Cantidad)) %>%
+        head(3) %>%
+        pull(categoria) %>%
+        paste(collapse = ", ")
+      paste(top_3_categorias)
+    })
+
+    output$empresa_destacada <- renderText({
+      datos <- datos_filtrados()
+      empresa_top <- datos %>%
+        count(companyName, name = "Cantidad") %>%
+        arrange(desc(Cantidad)) %>%
+        slice(1)
+
+      if (nrow(empresa_top) > 0) {
+        empresa_nombre <- empresa_top$companyName[[1]]
+        empresa_cantidad <- empresa_top$Cantidad[[1]]
+
+        paste0(
+          "La empresa que publicó más ofertas es ", empresa_nombre,
+          ", con un total de ", empresa_cantidad,
+          " oportunidades disponibles."
+        )
+      } else {
+        "No se encontraron datos para determinar la empresa destacada."
+      }
+    })
+
+
+    output$sector_destacado <- renderText({
+      datos <- datos_filtrados()
+      sector_top <- datos %>%
+        count(sector, name = "Cantidad") %>%
+        arrange(desc(Cantidad)) %>%
+        slice(1)
+
+      if (nrow(sector_top) > 0) {
+        paste0(
+          "El sector con más oportunidades es ", sector_top$sector,
+          ", que concentra ", sector_top$Cantidad, " ofertas en total."
+        )
+      } else {
+        "No se encontraron datos para determinar el sector destacado."
+      }
+    })
+  }
 
   # Tabla resumen
   output$tabla <- renderDT({
-    datos <- datos_filtrados() 
+    datos <- datos_filtrados()
 
     # Si no se selecciona nada, usar todo el dataset sin agrupar
     if (is.null(input$agrupacion) || length(input$agrupacion) == 0) {
@@ -243,11 +257,8 @@ server <- function(input, output, session) {
       )
   })
 
-
-
-
   output$grafico <- renderPlot({
-    datos <- datos_filtrados() 
+    datos <- datos_filtrados()
     req(nrow(datos) > 0)
 
     if (input$tipo_grafico == "categoria") {
@@ -278,6 +289,8 @@ server <- function(input, output, session) {
         theme(plot.title = element_text(hjust = 0.5))
     }
   })
+
+  
 
   excel <- exportar_excel(input, output, datos_filtrados)
 }

@@ -1,13 +1,11 @@
-function_editar_categorias <- function(input, output, session) {
-    ruta_diccionario <- "./content/reglas-categorias.csv"
-
-    # Leer CSV como reactiveVal
-    diccionario <- reactiveVal(read.csv(ruta_diccionario, stringsAsFactors = FALSE))
+function_editar_categorias <- function(input, output, session, datos_reactivos) {
+    diccionario <- reactiveVal(read.csv(RUTA_CATEGORIAS, stringsAsFactors = FALSE))
 
     output$categorias <- renderDT(
         {
             datatable(diccionario(),
                 editable = list(target = "cell", disable = list(columns = NULL)),
+                selection = "single",
                 options = list(
                     dom = "frtip", # ✔ muestra barra de búsqueda, info y paginación
                     pageLength = 100,
@@ -19,11 +17,10 @@ function_editar_categorias <- function(input, output, session) {
         server = TRUE
     )
 
-
+    # Editar celdas
     observeEvent(input$categorias_cell_edit, {
         info <- input$categorias_cell_edit
         df_dicc <- diccionario()
-
         row <- info$row
         col <- info$col
         value <- info$value
@@ -35,27 +32,81 @@ function_editar_categorias <- function(input, output, session) {
         }
     })
 
+    # Agregar nueva categoria (con modal)
+    observeEvent(input$agregar_categoria, {
+        showModal(modalDialog(
+            title = "Agregar nueva categoría",
+            textInput("nueva_categoria", "Nombre de la categoría:"),
+            textInput("nueva_keyword", "Palabras clave (separadas por coma):"),
+            easyClose = TRUE,
+            footer = tagList(
+                modalButton("Cancelar"),
+                actionButton("confirmar_nueva_categoria", "Agregar")
+            )
+        ))
+    })
+
+    observeEvent(input$confirmar_nueva_categoria, {
+        removeModal()
+        nueva_categoria <- input$nueva_categoria
+        nueva_keyword <- input$nueva_keyword
+
+        if (!is.null(nueva_categoria) && nueva_categoria != "") {
+            df_dicc <- diccionario()
+            nueva_fila <- data.frame(categoria = nueva_categoria, keywords = nueva_keyword, stringsAsFactors = FALSE)
+            diccionario(bind_rows(df_dicc, nueva_fila))
+            showNotification("✅ Categoría agregada", type = "message")
+        } else {
+            showNotification("⚠️ Debes ingresar un nombre para la categoría", type = "warning")
+        }
+    })
+
+    # Eliminar categoría seleccionada
+    observeEvent(input$borrar_categoria, {
+        fila <- input$categorias_rows_selected
+        if (!is.null(fila)) {
+            df_dicc <- diccionario()
+            tech_borrada <- df_dicc[fila, "categoria"]
+            df_dicc <- df_dicc[-fila, ]
+            diccionario(df_dicc)
+            showNotification(paste("🗑 Categoría eliminada:", tech_borrada), type = "message")
+        } else {
+            showNotification("⚠️ Debes seleccionar una categoría para eliminar", type = "warning")
+        }
+    })
+
+    # Guardar CSV
     observeEvent(input$guardar_categorias, {
+        # Guardar archivo CSV
         tryCatch(
             {
                 # Guardar el archivo CSV editado
-                write.csv(diccionario(), ruta_diccionario, row.names = FALSE)
+                write.csv(diccionario(), RUTA_CATEGORIAS, row.names = FALSE)
                 showNotification("✅ Categorias guardado correctamente", type = "message")
+            },
+            error = function(e) {
+                showNotification(paste("❌ Error al guardar:", e$message), type = "error")
+            }
+        )
 
+        # Reclasificar
+        tryCatch(
+            {
                 # 🔄 Releer reglas actualizadas
-                nuevas_reglas <- read.csv(ruta_diccionario, stringsAsFactors = FALSE)
+                nuevas_reglas <- read.csv(RUTA_CATEGORIAS, stringsAsFactors = FALSE)
 
-                # 🔁 Reclasificar categorías
-                df <<- df %>%
+                
+                df_actualizado <- datos_reactivos() %>%
                     mutate(categoria = sapply(title, function(x) clasificar_desde_reglas(tolower(x), nuevas_reglas)))
 
+                datos_reactivos(df_actualizado)
                 # 🔄 Actualizar opciones del selectInput de categoría
                 updateSelectInput(session, "categoria",
                     choices = c("Todos", sort(unique(df$categoria)))
                 )
             },
             error = function(e) {
-                showNotification(paste("❌ Error al guardar:", e$message), type = "error")
+                showNotification(paste("❌ Error al reclasificar:", e$message), type = "error")
             }
         )
     })

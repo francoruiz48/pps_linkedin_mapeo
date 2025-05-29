@@ -1,6 +1,5 @@
 function_editar_tecnologias <- function(input, output, session) {
-  ruta_diccionario <- "./content/reglas-tecnologias.csv"
-  diccionario <- reactiveVal(read.csv(ruta_diccionario, stringsAsFactors = FALSE))
+  diccionario <- reactiveVal(read.csv(RUTA_TECNOLOGIAS, stringsAsFactors = FALSE))
 
   # Tabla editable con selección
   output$tecnologias <- renderDT(
@@ -56,8 +55,19 @@ function_editar_tecnologias <- function(input, output, session) {
     if (!is.null(nueva_tecnologia) && nueva_tecnologia != "") {
       df_dicc <- diccionario()
       nueva_fila <- data.frame(tecnologia = nueva_tecnologia, keywords = nueva_keyword, stringsAsFactors = FALSE)
-      diccionario(bind_rows(df_dicc, nueva_fila))
-      showNotification("✅ Tecnología agregada", type = "message")
+      df_dicc <- bind_rows(df_dicc, nueva_fila)
+      diccionario(df_dicc)
+
+      # 🔄 Guardar automáticamente al agregar
+      tryCatch(
+        {
+          write.csv(df_dicc, RUTA_TECNOLOGIAS, row.names = FALSE)
+          showNotification("✅ Tecnología agregada y guardada", type = "message")
+        },
+        error = function(e) {
+          showNotification(paste("❌ Error al guardar:", e$message), type = "error")
+        }
+      )
     } else {
       showNotification("⚠️ Debes ingresar un nombre para la tecnología", type = "warning")
     }
@@ -82,7 +92,7 @@ function_editar_tecnologias <- function(input, output, session) {
     # Guardar archivo CSV
     tryCatch(
       {
-        write.csv(diccionario(), ruta_diccionario, row.names = FALSE)
+        write.csv(diccionario(), RUTA_TECNOLOGIAS, row.names = FALSE)
         showNotification("✅ Tecnologías guardadas correctamente", type = "message")
       },
       error = function(e) {
@@ -93,18 +103,20 @@ function_editar_tecnologias <- function(input, output, session) {
     # Reclasificar tecnologías
     tryCatch(
       {
-        df <<- df %>% mutate(
-          tech_tags = sapply(title, function(x) {
-            if (is.na(x)) {
-              return("")
-            }
-            detectar_tecnologias(x)
-          })
-        )
+        df_actualizado <- datos_reactivos() %>%
+          mutate(
+            tech_tags = sapply(title, function(x) {
+              if (is.na(x)) {
+                return("")
+              }
+              detectar_tecnologias(x)
+            })
+          )
 
+        datos_reactivos(df_actualizado)
 
         updateSelectInput(session, "tecnologia",
-          choices = c("Todas", sort(unique(unlist(strsplit(df$tech_tags, ",\\s*")))))
+          choices = c("Todas", sort(unique(unlist(strsplit(df_actualizado$tech_tags, ",\\s*")))))
         )
       },
       error = function(e) {

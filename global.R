@@ -1,32 +1,40 @@
-source("./modules/preprocesamiento.R")
+#global constants
+RUTA_EXCEL <- "./content/combined_linkedin_jobs_no_duplicates.xlsx"
+RUTA_RDS <- "./content/df_procesado.rds"
+RUTA_SECTORES <- "./content/reglas-sectores.csv"
+RUTA_TECNOLOGIAS <- "./content/reglas-tecnologias.csv"
+RUTA_CATEGORIAS <- "./content/reglas-categorias.csv"
+INDICADORES <- FALSE
 
-options(shiny.minified = TRUE)
-
+#Libraries
 required_libraries <- c(
-  "shiny", 
+  "shiny",
   "shinydashboard",
   "ggplot2",
   "tidyr",
-  "tidyverse", 
-  "DT", 
+  "tidyverse",
+  "DT",
   "dbscan",
-  "readxl", 
-  "dplyr", 
+  "readxl",
+  "dplyr",
   "cluster",
   "stringr",
-  "writexl", 
-  "kableExtra", 
-  "pagedown", 
-  "htmltools", 
-  "plotly", 
-  "stringdist", 
-  "stats", 
+  "writexl",
+  "kableExtra",
+  "pagedown",
+  "htmltools",
+  "plotly",
+  "stringdist",
+  "stats",
   "text2vec",
   "shinyjs",
-  "shinycssloaders"
-  )
+  "shinycssloaders",
+  "conflicted"
+)
 
 options(repos = c(CRAN = "https://cloud.r-project.org"))
+options(shiny.minified = TRUE)
+options(shiny.autoreload = FALSE)
 
 for (lib in required_libraries) {
   if (!requireNamespace(lib, quietly = TRUE)) {
@@ -34,3 +42,13 @@ for (lib in required_libraries) {
   }
   library(lib, character.only = TRUE)
 }
+
+#conflicts of libraries
+conflict_prefer("filter", "dplyr")
+conflict_prefer("lag", "dplyr")
+conflict_prefer("layout", "graphics")
+conflict_prefer("group_rows", "kableExtra")
+conflict_prefer("runExample", "shiny")
+conflicts_prefer(DT::dataTableOutput)
+conflicts_prefer(shiny::dataTableOutput)
+

@@ -5,7 +5,7 @@ detectar_tecnologias <- function(titulo) {
     }
 
     tecnologias_detectadas <- c()
-    reglas <- read.csv("content/reglas-tecnologias.csv", stringsAsFactors = FALSE)
+    reglas <- read.csv(RUTA_TECNOLOGIAS, stringsAsFactors = FALSE)
 
     for (i in seq_len(nrow(reglas))) {
       tecnologia <- reglas$tecnologia[i]

@@ -1,6 +1,6 @@
 source("global.R")
 source("server.R")
-source("ui.R")
+source("ui/ui.R")
 
 library(shiny)
 
