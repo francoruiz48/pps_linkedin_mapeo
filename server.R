@@ -27,9 +27,9 @@ server <- function(input, output, session) {
     datos_reactivos(df)
   })
 
-  editar_categorias <- function_editar_categorias(input, output, session)
-  editar_sectores <- function_editar_sectores(input, output, session)
-  editar_tecnologias <- function_editar_tecnologias(input, output, session)
+  editar_categorias <- function_editar_categorias(input, output, session, datos_reactivos)
+  editar_sectores <- function_editar_sectores(input, output, session, datos_reactivos)
+  editar_tecnologias <- function_editar_tecnologias(input, output, session, datos_reactivos)
 
   # ✅ Esto se puede ejecutar una sola vez, no es reactivo a input$sector
   observe({

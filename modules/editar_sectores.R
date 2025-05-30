@@ -54,9 +54,20 @@ function_editar_sectores <- function(input, output, session, datos_reactivos) {
 
         if (!is.null(nuevo_sector) && nuevo_sector != "") {
             df_dicc <- diccionario()
-            nueva_fila <- data.frame(sector = nuevo_sector, keywords = nueva_keyword, stringsAsFactors = FALSE)
-            diccionario(bind_rows(df_dicc, nueva_fila))
-            showNotification("✅ Sector agregado", type = "message")
+            nueva_fila <- data.frame(sector_general = nuevo_sector, keywords = nueva_keyword, stringsAsFactors = FALSE)
+            df_dicc <- bind_rows(df_dicc, nueva_fila)
+            diccionario(df_dicc)
+
+            # 🔄 Guardar automáticamente al agregar
+            tryCatch(
+                {
+                    write.csv(df_dicc, RUTA_SECTORES, row.names = FALSE)
+                    showNotification("✅ Sector agregado y guardado", type = "message")
+                },
+                error = function(e) {
+                    showNotification(paste("❌ Error al guardar:", e$message), type = "error")
+                }
+            )
         } else {
             showNotification("⚠️ Debes ingresar un nombre para el sector", type = "warning")
         }
@@ -67,7 +78,7 @@ function_editar_sectores <- function(input, output, session, datos_reactivos) {
         fila <- input$sectores_rows_selected
         if (!is.null(fila)) {
             df_dicc <- diccionario()
-            sector_borrado <- df_dicc[fila, "sector"]
+            sector_borrado <- df_dicc[fila, "sector_general"]
             df_dicc <- df_dicc[-fila, ]
             diccionario(df_dicc)
             showNotification(paste("🗑 Sector eliminado:", sector_borrado), type = "message")
@@ -79,31 +90,12 @@ function_editar_sectores <- function(input, output, session, datos_reactivos) {
     observeEvent(input$guardar_sectores, {
         tryCatch(
             {
-                # Guardar el archivo CSV editado
+                # Guardar el archivo CSV editado # nolint
                 write.csv(diccionario(), RUTA_SECTORES, row.names = FALSE)
                 showNotification("✅ Sectores guardado correctamente", type = "message")
             },
             error = function(e) {
-                showNotification(paste("❌ Error al guardar:", e$message), type = "error")
-            }
-        )
-        tryCatch(
-            {
-                # 🔄 Releer reglas actualizadas
-                nuevas_reglas <- read.csv(RUTA_SECTORES, stringsAsFactors = FALSE)
-
-                df_actualizado <- datos_reactivos() %>%
-                    mutate(sector_general = sapply(sector, function(x) agrupar_sector_csv(tolower(x), nuevas_reglas)))
-
-                datos_reactivos(df_actualizado)
-
-                # 🔄 Actualizar opciones del selectInput
-                updateSelectInput(session, "sector",
-                    choices = c("Todos", sort(unique(df$sector)))
-                )
-            },
-            error = function(e) {
-                showNotification(paste("❌ Error al reclasificar:", e$message), type = "error")
+                showNotification(paste("❌ Error al guardar:", e$message), type = "error") # nolint: indentation_linter.
             }
         )
     })

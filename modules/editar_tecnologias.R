@@ -1,4 +1,4 @@
-function_editar_tecnologias <- function(input, output, session) {
+function_editar_tecnologias <- function(input, output, session, datos_reactivos) {
   diccionario <- reactiveVal(read.csv(RUTA_TECNOLOGIAS, stringsAsFactors = FALSE))
 
   # Tabla editable con selección
@@ -97,30 +97,6 @@ function_editar_tecnologias <- function(input, output, session) {
       },
       error = function(e) {
         showNotification(paste("❌ Error al guardar el archivo:", e$message), type = "error")
-      }
-    )
-
-    # Reclasificar tecnologías
-    tryCatch(
-      {
-        df_actualizado <- datos_reactivos() %>%
-          mutate(
-            tech_tags = sapply(title, function(x) {
-              if (is.na(x)) {
-                return("")
-              }
-              detectar_tecnologias(x)
-            })
-          )
-
-        datos_reactivos(df_actualizado)
-
-        updateSelectInput(session, "tecnologia",
-          choices = c("Todas", sort(unique(unlist(strsplit(df_actualizado$tech_tags, ",\\s*")))))
-        )
-      },
-      error = function(e) {
-        showNotification(paste("❌ Error al reclasificar:", e$message), type = "error")
       }
     )
   })

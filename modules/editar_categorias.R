@@ -54,8 +54,19 @@ function_editar_categorias <- function(input, output, session, datos_reactivos) 
         if (!is.null(nueva_categoria) && nueva_categoria != "") {
             df_dicc <- diccionario()
             nueva_fila <- data.frame(categoria = nueva_categoria, keywords = nueva_keyword, stringsAsFactors = FALSE)
-            diccionario(bind_rows(df_dicc, nueva_fila))
-            showNotification("✅ Categoría agregada", type = "message")
+            df_dicc <- bind_rows(df_dicc, nueva_fila)
+            diccionario(df_dicc)
+
+            # 🔄 Guardar automáticamente al agregar
+            tryCatch(
+                {
+                    write.csv(df_dicc, RUTA_CATEGORIAS, row.names = FALSE)
+                    showNotification("✅ Categoría agregada y guardada", type = "message")
+                },
+                error = function(e) {
+                    showNotification(paste("❌ Error al guardar:", e$message), type = "error")
+                }
+            )
         } else {
             showNotification("⚠️ Debes ingresar un nombre para la categoría", type = "warning")
         }
@@ -86,27 +97,6 @@ function_editar_categorias <- function(input, output, session, datos_reactivos) 
             },
             error = function(e) {
                 showNotification(paste("❌ Error al guardar:", e$message), type = "error")
-            }
-        )
-
-        # Reclasificar
-        tryCatch(
-            {
-                # 🔄 Releer reglas actualizadas
-                nuevas_reglas <- read.csv(RUTA_CATEGORIAS, stringsAsFactors = FALSE)
-
-                
-                df_actualizado <- datos_reactivos() %>%
-                    mutate(categoria = sapply(title, function(x) clasificar_desde_reglas(tolower(x), nuevas_reglas)))
-
-                datos_reactivos(df_actualizado)
-                # 🔄 Actualizar opciones del selectInput de categoría
-                updateSelectInput(session, "categoria",
-                    choices = c("Todos", sort(unique(df$categoria)))
-                )
-            },
-            error = function(e) {
-                showNotification(paste("❌ Error al reclasificar:", e$message), type = "error")
             }
         )
     })
