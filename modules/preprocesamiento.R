@@ -1,10 +1,47 @@
-source("./modules/leer_tecnologias.R")
 source("./modules/clustering.R")
+
+
+clasificar_desde_reglas <- function(titulo, reglas, entity, multiple = FALSE) {
+    resultados <- c()
+    for (i in 1:nrow(reglas)) {
+        valor <- reglas[[entity]][i]
+        keywords <- reglas$keywords[i]
+
+        if (is.na(keywords) || keywords == "") next
+
+        # Separar palabras clave y crear patrón
+        palabras <- unlist(strsplit(keywords, ",\\s*"))
+        pattern <- paste0("\\b(", paste(palabras, collapse = "|"), ")\\b")
+
+        # Si hay coincidencia, devolver la entidad
+        if (str_detect(titulo, regex(pattern, ignore_case = TRUE))) {
+            if (multiple) {
+                resultados <- c(resultados, valor)
+            } else {
+                return(valor)
+            }
+        }
+    }
+    if (multiple) {
+        return(paste(unique(resultados), collapse = ", "))
+    } else {
+        return("Otro")
+    }
+}
 
 procesar_df <- function(df) {
     tryCatch(
         {
+            shinyjs::show("loader_div")
             showNotification("Inicio de procesamiento de archivo.", type = "message")
+
+            requeridas <- c("title", "companyName", "sector", "location")
+            if (!all(requeridas %in% names(df))) {
+                showNotification("❌ El archivo no contiene las columnas necesarias.", type = "error")
+                return("")
+            }
+
+
             # Leer y limpiar datos
             tryCatch(
                 {
@@ -25,20 +62,34 @@ procesar_df <- function(df) {
             # ===============================
             # 📌 TECNOLOGIAS
             # ===============================
-            tryCatch(
-                {
-                    df <- df %>%
-                        rowwise() %>%
-                        mutate(
-                            tech_tags = detectar_tecnologias(title)
-                        ) %>%
-                        ungroup()
-                },
-                error = function(e) {
-                    showNotification("Error al detectar tecnologias", type = "error")
-                    return("")
-                }
-            )
+
+            detectar_tecnologias <- function(titulo) {
+                tryCatch(
+                    {
+                        if (length(titulo) != 1 || is.na(titulo) || titulo == "") {
+                            return("")
+                        }
+
+                        tecnologias_detectadas <- c()
+                        reglas <- read.csv(RUTA_TECNOLOGIAS, stringsAsFactors = FALSE)
+
+                        tecnologias_detectadas <- clasificar_desde_reglas(titulo, reglas, entity = "tecnologia", multiple = TRUE)
+                        return(paste(unique(tecnologias_detectadas), collapse = ", "))
+                    },
+                    error = function(e) {
+                        message("❌ Error en detectar_tecnologias(): ", e$message)
+                        return("")
+                    }
+                )
+            }
+
+
+            df <- df %>%
+                rowwise() %>%
+                mutate(
+                    tech_tags = detectar_tecnologias(title)
+                ) %>%
+                ungroup()
 
             # ===============================
             # 📌 CATEGORÍAS
@@ -48,34 +99,14 @@ procesar_df <- function(df) {
                 {
                     reglas <- read.csv(RUTA_CATEGORIAS, stringsAsFactors = FALSE)
 
-                    clasificar_desde_reglas <- function(titulo, reglas) {
-                        for (i in 1:nrow(reglas)) {
-                            categoria <- reglas$categoria[i]
-                            keywords <- reglas$keywords[i]
-
-                            if (is.na(keywords) || keywords == "") next
-
-                            # Separar palabras clave y crear patrón
-                            palabras <- unlist(strsplit(keywords, ",\\s*"))
-                            pattern <- paste0("\\b(", paste(palabras, collapse = "|"), ")\\b")
-
-                            # Si hay coincidencia, devolver la categoría
-                            if (str_detect(titulo, regex(pattern, ignore_case = TRUE))) {
-                                return(categoria)
-                            }
-                        }
-                        return("Otro")
-                    }
-
                     df <- df %>%
-                        mutate(categoria = sapply(title, \(x) clasificar_desde_reglas(tolower(x), reglas)))
+                        mutate(categoria = sapply(title, \(x) clasificar_desde_reglas(x, reglas, entity = "categoria")))
                 },
                 error = function(e) {
                     showNotification("Error al clasificar reglas", type = "error")
                     return("")
                 }
             )
-
 
 
             # ===============================
@@ -86,27 +117,8 @@ procesar_df <- function(df) {
                 { # Leer reglas de sector desde CSV
                     reglas_sector <- read.csv(RUTA_SECTORES, stringsAsFactors = FALSE)
 
-                    agrupar_sector_csv <- function(texto, reglas) {
-                        for (i in 1:nrow(reglas)) {
-                            categoria <- reglas$sector_general[i]
-                            keywords <- reglas$keywords[i]
-
-                            if (is.na(keywords) || keywords == "") next
-
-                            palabras <- unlist(strsplit(keywords, ",\\s*"))
-                            pattern <- paste0("\\b(", paste(palabras, collapse = "|"), ")\\b")
-
-                            if (str_detect(texto, regex(pattern, ignore_case = TRUE))) {
-                                return(categoria)
-                            }
-                        }
-                        return("Otros")
-                    }
-
                     df <- df %>%
-                        mutate(sector = ifelse(is.na(sector), "Desconocido", sector)) %>%
-                        mutate(sector = tolower(sector)) %>%
-                        mutate(sector_general = sapply(sector, \(x) agrupar_sector_csv(x, reglas_sector)))
+                        mutate(sector_general = sapply(sector, \(x) clasificar_desde_reglas(x, reglas_sector, entity = "sector_general")))
                 },
                 error = function(e) {
                     showNotification("Error al clasificar sectores", type = "error")
@@ -160,6 +172,8 @@ procesar_df <- function(df) {
         error = function(e) {
             showNotification("❌ Error al preprocesar datos: ", e$message, type = "error")
             return("")
+        }, finally = {
+            shinyjs::hide("loader_div")
         }
     )
 }

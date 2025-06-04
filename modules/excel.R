@@ -46,8 +46,6 @@ importar_excel <- function(input, output, session, datos_reactivos) {
   observeEvent(input$cargar_archivo, {
     req(input$archivo_excel)
 
-    # Mostrar pantalla de carga
-    shinyjs::show("loader_div")
     tryCatch(
       {
         showNotification("Iniciando proceso de importación de excel", type = "message")
@@ -59,10 +57,6 @@ importar_excel <- function(input, output, session, datos_reactivos) {
       },
       error = function(e) {
         showNotification(paste("❌ Error al cargar archivo:", e$message), type = "error")
-      },
-      finally = {
-        # Ocultar pantalla de carga
-        shinyjs::hide("loader_div")
       }
     )
   })

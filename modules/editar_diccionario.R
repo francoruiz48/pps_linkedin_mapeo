@@ -81,7 +81,6 @@ function_editar_diccionario <- function(input, output, session,
             elemento_borrado <- df_dicc[fila, nombre_columna]
             df_dicc <- df_dicc[-fila, ]
             diccionario(df_dicc)
-            guardar(diccionario, nombre_archivo)
             showNotification(paste("🗑", nombre_columna, "eliminada:", elemento_borrado), type = "message")
         } else {
             showNotification(paste("⚠️ Debes seleccionar una", nombre_columna, "para eliminar"), type = "warning")
