@@ -38,6 +38,7 @@ filtros_server <- function(input, output, session, datos_reactivos) {
         }
     })
 
+    # ✅ Se actualiza ciudad según el pais
     observeEvent(input$pais_cluster, {
         datos <- datos_reactivos()
         if (input$pais_cluster == "Todos") {

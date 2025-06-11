@@ -70,11 +70,8 @@ procesar_df <- function(df) {
                             return("")
                         }
 
-                        tecnologias_detectadas <- c()
                         reglas <- read.csv(RUTA_TECNOLOGIAS, stringsAsFactors = FALSE)
-
-                        tecnologias_detectadas <- clasificar_desde_reglas(titulo, reglas, entity = "tecnologia", multiple = TRUE)
-                        return(paste(unique(tecnologias_detectadas), collapse = ", "))
+                        return(clasificar_desde_reglas(titulo, reglas, entity = "tecnologia", multiple = TRUE))
                     },
                     error = function(e) {
                         message("❌ Error en detectar_tecnologias(): ", e$message)
