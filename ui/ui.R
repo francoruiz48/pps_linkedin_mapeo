@@ -1,7 +1,6 @@
 source("ui/loader.R")
 source("ui/excel.R")
 source("ui/crud.R")
-source("ui/indicadores.R")
 source("ui/grafico.R")
 source("ui/filters.R")
 
@@ -18,7 +17,6 @@ ui <- fluidPage(
       sidebarLayout(
         filter_ui,
         mainPanel(
-          indicadores_ui,
           tabsetPanel(
             tabPanel(
               "Tabla",
