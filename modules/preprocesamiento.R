@@ -37,8 +37,9 @@ procesar_df <- function(df) {
 
             requeridas <- c("title", "companyName", "sector", "location")
             if (!all(requeridas %in% names(df))) {
+                print("El archivo no contiene las columnas necesarias.")
                 showNotification("❌ El archivo no contiene las columnas necesarias.", type = "error")
-                return("")
+                return(NULL)
             }
 
 
@@ -123,7 +124,7 @@ procesar_df <- function(df) {
                 }
             )
 
-
+            
             # ===============================
             # 📌 PAISES Y CIUDADES
             # ===============================

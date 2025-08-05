@@ -1,6 +1,9 @@
 filtros_server <- function(input, output, session, datos_reactivos) {
     observe({
         datos <- datos_reactivos()
+
+        req(is.data.frame(datos))
+
         updateSelectInput(session, "sector",
             choices = c("Todos", sort(unique(datos$sector_general)))
         )
@@ -25,6 +28,9 @@ filtros_server <- function(input, output, session, datos_reactivos) {
     # ✅ Se actualiza companyName según el sector
     observeEvent(input$sector, {
         datos <- datos_reactivos()
+
+        req(is.data.frame(datos))
+
         if (input$sector == "Todos") {
             updateSelectizeInput(session, "companyName",
                 choices = c("Todos", sort(unique(datos$companyName))),
@@ -41,6 +47,8 @@ filtros_server <- function(input, output, session, datos_reactivos) {
     # ✅ Se actualiza ciudad según el pais
     observeEvent(input$pais_cluster, {
         datos <- datos_reactivos()
+        req(is.data.frame(datos))
+
         if (input$pais_cluster == "Todos") {
             updateSelectInput(session, "ciudad_cluster",
                 choices = c("Todos", sort(unique(datos$ciudad_cluster)))
@@ -60,6 +68,7 @@ filtros_server <- function(input, output, session, datos_reactivos) {
 
     datos_filtrados <- reactive({
         datos <- datos_reactivos()
+        req(is.data.frame(datos))
         if (input$sector != "Todos") {
             datos <- datos %>% filter(sector_general == input$sector)
         }

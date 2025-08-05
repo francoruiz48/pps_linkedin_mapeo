@@ -33,7 +33,8 @@ required_libraries <- c(
   "text2vec",
   "shinyjs",
   "shinycssloaders",
-  "conflicted"
+  "conflicted",
+  "stopwords"
 )
 
 for (lib in required_libraries) {
